@@ -3,6 +3,7 @@ import {
   ERROR_CONFIRMACION,
   codigoErrorIntercambio,
   parsearParametrosConfirmacion,
+  resumenCookiesPkce,
   resumenErrorAuth,
   type CodigoErrorConfirmacion,
 } from "@/lib/confirmacion";
@@ -41,7 +42,13 @@ export async function GET(request: NextRequest) {
       const supabase = await crearClienteServidor();
       const { error } = await supabase.auth.exchangeCodeForSession(parametros.code);
       if (!error) return exito();
-      console.error("[auth/confirm] exchangeCodeForSession falló", resumenErrorAuth(error));
+      // Para diagnosticar un verifier ausente: host de la petición y qué cookies
+      // de PKCE llegaron (solo nombres, nunca valores).
+      console.error("[auth/confirm] exchangeCodeForSession falló", {
+        ...resumenErrorAuth(error),
+        host: request.headers.get("host"),
+        cookiesPkce: resumenCookiesPkce(request.cookies.getAll().map(({ name }) => name)),
+      });
       return redirigirConError(codigoErrorIntercambio(error));
     }
     case "error-proveedor": {

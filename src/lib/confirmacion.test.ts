@@ -9,6 +9,7 @@ import {
   ERROR_CONFIRMADO_OTRO_NAVEGADOR,
   codigoErrorIntercambio,
   parsearParametrosConfirmacion,
+  resumenCookiesPkce,
   resumenErrorAuth,
 } from "./confirmacion";
 
@@ -126,5 +127,54 @@ describe("resumenErrorAuth", () => {
       estado: null,
     });
     expect(resumenErrorAuth("x")).toEqual({ nombre: "desconocido", codigo: null, estado: null });
+  });
+});
+
+describe("resumenCookiesPkce", () => {
+  const BASE = "sb-mbjwskouchonyfofqwff-auth-token";
+
+  it("sin cookies no hay nada", () => {
+    expect(resumenCookiesPkce([])).toEqual({
+      verifierFijo: false,
+      verifiersPorFlujo: 0,
+      indiceFlujos: false,
+    });
+  });
+
+  it("reconoce el verifier fijo, los de flujo y el índice", () => {
+    expect(
+      resumenCookiesPkce([
+        `${BASE}-code-verifier`,
+        `${BASE}-flow-0123456789abcdef0123456789abcdef-code-verifier`,
+        `${BASE}-flow-fedcba9876543210fedcba9876543210-code-verifier`,
+        `${BASE}-flows-code-verifier`,
+        "__next_hmr_refresh_hash__",
+      ]),
+    ).toEqual({ verifierFijo: true, verifiersPorFlujo: 2, indiceFlujos: true });
+  });
+
+  it("solo el verifier fijo (estado tras un signUp fallido)", () => {
+    expect(resumenCookiesPkce([`${BASE}-code-verifier`, "otra"])).toEqual({
+      verifierFijo: true,
+      verifiersPorFlujo: 0,
+      indiceFlujos: false,
+    });
+  });
+
+  it("cuenta una sola vez un verifier partido en trozos", () => {
+    expect(
+      resumenCookiesPkce([
+        `${BASE}-flow-0123456789abcdef-code-verifier.0`,
+        `${BASE}-flow-0123456789abcdef-code-verifier.1`,
+      ]).verifiersPorFlujo,
+    ).toBe(1);
+  });
+
+  it("no confunde la cookie de sesión con un verifier", () => {
+    expect(resumenCookiesPkce([BASE, `${BASE}.0`])).toEqual({
+      verifierFijo: false,
+      verifiersPorFlujo: 0,
+      indiceFlujos: false,
+    });
   });
 });

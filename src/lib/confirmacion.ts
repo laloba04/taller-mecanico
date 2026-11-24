@@ -103,3 +103,37 @@ export function resumenErrorAuth(error: unknown): ResumenErrorAuth {
   }
   return { nombre: "desconocido", codigo: null, estado: null };
 }
+
+export type ResumenCookiesPkce = {
+  /** `sb-<ref>-auth-token-code-verifier`: el único que lee el servidor sin `sb_flow_id`. */
+  verifierFijo: boolean;
+  /** Número de `sb-<ref>-auth-token-flow-<id>-code-verifier`. */
+  verifiersPorFlujo: number;
+  /** `sb-<ref>-auth-token-flows-code-verifier` (índice de flujos pendientes). */
+  indiceFlujos: boolean;
+};
+
+const PATRON_VERIFIER_POR_FLUJO = /^sb-.+-flow-[A-Za-z0-9_-]{8,64}-code-verifier(\.\d+)?$/;
+const PATRON_INDICE_FLUJOS = /^sb-.+-flows-code-verifier(\.\d+)?$/;
+const PATRON_VERIFIER_FIJO = /^sb-.+-auth-token-code-verifier(\.\d+)?$/;
+
+/**
+ * Resume qué cookies de PKCE llegaron a `/auth/confirm` para diagnosticar un
+ * `pkce_code_verifier_not_found` en el log del servidor. Solo usa los nombres
+ * (nunca los valores) y no se muestra al usuario (D17).
+ */
+export function resumenCookiesPkce(nombres: readonly string[]): ResumenCookiesPkce {
+  const porFlujo = new Set<string>();
+  let verifierFijo = false;
+  let indiceFlujos = false;
+  for (const nombre of nombres) {
+    if (PATRON_VERIFIER_POR_FLUJO.test(nombre)) {
+      porFlujo.add(nombre.replace(/\.\d+$/, ""));
+    } else if (PATRON_INDICE_FLUJOS.test(nombre)) {
+      indiceFlujos = true;
+    } else if (PATRON_VERIFIER_FIJO.test(nombre)) {
+      verifierFijo = true;
+    }
+  }
+  return { verifierFijo, verifiersPorFlujo: porFlujo.size, indiceFlujos };
+}
