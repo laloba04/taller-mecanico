@@ -1,42 +1,60 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { z } from "zod";
-import { RUTA_INICIO } from "@/lib/rutas";
+import {
+  ERROR_CONFIRMACION,
+  codigoErrorIntercambio,
+  parsearParametrosConfirmacion,
+  resumenErrorAuth,
+  type CodigoErrorConfirmacion,
+} from "@/lib/confirmacion";
+import { RUTA_INICIO, RUTA_LOGIN } from "@/lib/rutas";
 import { crearClienteServidor } from "@/lib/supabase/server";
-
-const esquemaOtp = z.object({
-  token_hash: z.string().min(1),
-  type: z.enum(["signup", "invite", "magiclink", "recovery", "email_change", "email"]),
-});
-
-const esquemaCodigo = z.object({
-  code: z.string().min(1),
-});
 
 /**
  * Confirma el email del registro. Acepta `token_hash` + `type` (plantilla de
- * correo con verifyOtp) o `code` (flujo PKCE). Nunca muestra el error interno.
+ * correo con verifyOtp) o `code` (flujo PKCE con la plantilla por defecto).
+ * Los fallos se registran en el servidor (sin tokens ni datos del usuario) y
+ * al usuario solo se le muestra un código de la lista blanca de `/login` (D17).
  */
 export async function GET(request: NextRequest) {
-  const parametros = Object.fromEntries(request.nextUrl.searchParams);
-  const urlExito = new URL(RUTA_INICIO, request.nextUrl.origin);
-  const urlError = new URL("/login?error=confirmacion", request.nextUrl.origin);
+  const { origin, searchParams } = request.nextUrl;
+  const parametros = parsearParametrosConfirmacion(searchParams);
 
-  const otp = esquemaOtp.safeParse(parametros);
-  if (otp.success) {
-    const supabase = await crearClienteServidor();
-    const { error } = await supabase.auth.verifyOtp({
-      token_hash: otp.data.token_hash,
-      type: otp.data.type,
-    });
-    return NextResponse.redirect(error ? urlError : urlExito);
+  const redirigirConError = (codigo: CodigoErrorConfirmacion) => {
+    const destino = new URL(RUTA_LOGIN, origin);
+    destino.searchParams.set("error", codigo);
+    return NextResponse.redirect(destino);
+  };
+  const exito = () => NextResponse.redirect(new URL(RUTA_INICIO, origin));
+
+  switch (parametros.tipo) {
+    case "otp": {
+      const supabase = await crearClienteServidor();
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash: parametros.tokenHash,
+        type: parametros.type,
+      });
+      if (!error) return exito();
+      console.error("[auth/confirm] verifyOtp falló", resumenErrorAuth(error));
+      return redirigirConError(ERROR_CONFIRMACION);
+    }
+    case "codigo": {
+      const supabase = await crearClienteServidor();
+      const { error } = await supabase.auth.exchangeCodeForSession(parametros.code);
+      if (!error) return exito();
+      console.error("[auth/confirm] exchangeCodeForSession falló", resumenErrorAuth(error));
+      return redirigirConError(codigoErrorIntercambio(error));
+    }
+    case "error-proveedor": {
+      console.error("[auth/confirm] Supabase no pudo verificar el enlace", {
+        codigo: parametros.codigoError,
+      });
+      return redirigirConError(ERROR_CONFIRMACION);
+    }
+    case "invalido": {
+      console.error("[auth/confirm] petición sin token_hash, code ni error", {
+        parametros: [...searchParams.keys()],
+      });
+      return redirigirConError(ERROR_CONFIRMACION);
+    }
   }
-
-  const codigo = esquemaCodigo.safeParse(parametros);
-  if (codigo.success) {
-    const supabase = await crearClienteServidor();
-    const { error } = await supabase.auth.exchangeCodeForSession(codigo.data.code);
-    return NextResponse.redirect(error ? urlError : urlExito);
-  }
-
-  return NextResponse.redirect(urlError);
 }

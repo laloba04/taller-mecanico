@@ -22,8 +22,10 @@ export async function crearClienteServidor() {
             almacenCookies.set(name, value, options);
           }
         } catch {
-          // Desde un Server Component no se pueden escribir cookies;
-          // el middleware se encarga de refrescar la sesión.
+          // Solo falla en Server Components, donde Next no permite escribir
+          // cookies (el middleware refresca allí la sesión). En Server Actions
+          // y Route Handlers `set` no lanza, así que la cookie del code
+          // verifier de PKCE que escribe `signUp` llega al navegador.
         }
       },
     },

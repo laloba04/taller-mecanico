@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { RUTA_INICIO, RUTA_LOGIN, esRutaPublica } from "@/lib/rutas";
+import { RUTA_INICIO, RUTA_LOGIN, esRutaCallbackAuth, esRutaPublica } from "@/lib/rutas";
 import { validarConfigSupabase } from "@/lib/supabase/config";
 import type { Database } from "@/lib/supabase/tipos";
 
@@ -9,6 +9,12 @@ import type { Database } from "@/lib/supabase/tipos";
  * sin sesión, toda ruta salvo `/login` y `/auth/*` redirige a `/login`.
  */
 export async function middleware(request: NextRequest) {
+  // `/auth/*` es pública y gestiona su propia sesión: no se refresca aquí para
+  // no borrar la cookie del code verifier antes del intercambio PKCE.
+  if (esRutaCallbackAuth(request.nextUrl.pathname)) {
+    return NextResponse.next({ request });
+  }
+
   const { url, anonKey } = validarConfigSupabase(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,

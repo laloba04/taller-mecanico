@@ -7,6 +7,16 @@ export const RUTA_LOGIN = "/login";
 /** Rutas accesibles sin sesión: `/login` y todo lo que cuelga de `/auth/`. */
 export function esRutaPublica(pathname: string): boolean {
   if (pathname === RUTA_LOGIN || pathname === `${RUTA_LOGIN}/`) return true;
+  return esRutaCallbackAuth(pathname);
+}
+
+/**
+ * Rutas `/auth/*` (callbacks de confirmación). El middleware no debe tocar la
+ * sesión en ellas: si hubiera una cookie de sesión inválida, `getUser()` la
+ * eliminaría junto con la cookie del code verifier de PKCE, y el route handler
+ * ya no podría intercambiar el `code`. Ellas mismas crean la sesión.
+ */
+export function esRutaCallbackAuth(pathname: string): boolean {
   return pathname === "/auth" || pathname.startsWith("/auth/");
 }
 

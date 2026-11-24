@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { RUTA_INICIO, destinoSeguro, esRutaPublica, origenDesdeCabeceras } from "./rutas";
+import {
+  RUTA_INICIO,
+  destinoSeguro,
+  esRutaCallbackAuth,
+  esRutaPublica,
+  origenDesdeCabeceras,
+} from "./rutas";
+
+describe("esRutaCallbackAuth", () => {
+  it.each(["/auth", "/auth/confirm", "/auth/otra/mas"])("%s es callback de auth", (ruta) => {
+    expect(esRutaCallbackAuth(ruta)).toBe(true);
+  });
+
+  it.each(["/login", "/authx", "/autho/confirm", "/x/auth/confirm", "/panel"])(
+    "%s no es callback de auth",
+    (ruta) => {
+      expect(esRutaCallbackAuth(ruta)).toBe(false);
+    },
+  );
+});
 
 describe("esRutaPublica", () => {
   it.each(["/login", "/login/", "/auth/confirm", "/auth/otra/mas", "/auth"])(
