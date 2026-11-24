@@ -5,6 +5,7 @@
 
 # build
 /.next/
+/.next-dev/
 /out/
 /build
 *.tsbuildinfo
