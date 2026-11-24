@@ -36,7 +36,7 @@ Nada está terminado sin `npm run check` en verde y veredicto APROBADO.
 
 ## Plan por fases
 0. Base y agentes ✅
-1. Supabase (esquema + RLS) + CI en GitHub
+1. Supabase (esquema + RLS) + CI en GitHub ✅
 2. Auth + layout móvil
 3. Clientes y vehículos
 4. Órdenes de trabajo (estados, líneas, IVA, total)
@@ -45,4 +45,4 @@ Nada está terminado sin `npm run check` en verde y veredicto APROBADO.
 7. Borrador de orden con IA (Groq)
 8. Datos demo + Vercel público + README final
 
-Estado actual: Fase 0 terminada, pendiente de revisión.
+Estado actual: Fase 1 terminada (esquema + RLS aplicados en `taller-mecanico`, advisors limpios, CI en verde). Fase 2 en curso.
