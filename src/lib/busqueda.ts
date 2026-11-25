@@ -24,9 +24,20 @@ export function filtroOrIlike(columnas: readonly string[], patron: string): stri
   return columnas.map((columna) => `${columna}.ilike.${entrecomillado}`).join(",");
 }
 
-export type EntidadBD = "cliente" | "vehiculo";
+export type EntidadBD = "cliente" | "vehiculo" | "orden" | "linea";
 
 export const MENSAJE_ERROR_BD_GENERICO = "No se pudieron guardar los cambios. Inténtalo de nuevo.";
+
+/** Rechazo de los triggers de `20261125000000_transiciones_orden.sql` (errcode P0001). */
+export const MENSAJE_ESTADO_ORDEN_NO_PERMITIDO =
+  "Esa operación no está permitida en el estado actual de la orden.";
+
+const MENSAJE_REFERENCIA: Readonly<Record<EntidadBD, string>> = {
+  cliente: "El cliente indicado no existe.",
+  vehiculo: "El cliente indicado no existe.",
+  orden: "El vehículo indicado no existe.",
+  linea: "La orden indicada no existe.",
+};
 
 /**
  * Traduce un error de Postgres/PostgREST a un mensaje en español.
@@ -41,7 +52,9 @@ export function mensajeErrorBD(error: unknown, entidad?: EntidadBD): string {
         ? "Ya existe un vehículo con esa matrícula."
         : "Ya existe un registro con esos datos.";
     case "23503":
-      return "El cliente indicado no existe.";
+      return MENSAJE_REFERENCIA[entidad ?? "cliente"];
+    case "P0001":
+      return MENSAJE_ESTADO_ORDEN_NO_PERMITIDO;
     case "23514":
     case "22P02":
       return "Algún dato no tiene un formato válido.";

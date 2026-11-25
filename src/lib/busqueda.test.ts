@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   LONGITUD_MAXIMA_BUSQUEDA,
   MENSAJE_ERROR_BD_GENERICO,
+  MENSAJE_ESTADO_ORDEN_NO_PERMITIDO,
   filtroOrIlike,
   mensajeErrorBD,
   patronBusqueda,
@@ -66,6 +67,20 @@ describe("mensajeErrorBD", () => {
 
   it("traduce clave foránea inexistente", () => {
     expect(mensajeErrorBD({ code: "23503" }, "vehiculo")).toBe("El cliente indicado no existe.");
+  });
+
+  it("traduce clave foránea inexistente en órdenes y líneas", () => {
+    expect(mensajeErrorBD({ code: "23503" }, "orden")).toBe("El vehículo indicado no existe.");
+    expect(mensajeErrorBD({ code: "23503" }, "linea")).toBe("La orden indicada no existe.");
+  });
+
+  it("traduce el rechazo de los triggers de estado sin exponer el mensaje", () => {
+    const error = { code: "P0001", message: "transicion_orden_no_permitida" };
+    expect(mensajeErrorBD(error, "orden")).toBe(
+      "Esa operación no está permitida en el estado actual de la orden.",
+    );
+    expect(mensajeErrorBD(error, "linea")).toBe(MENSAJE_ESTADO_ORDEN_NO_PERMITIDO);
+    expect(mensajeErrorBD(error)).not.toContain("transicion");
   });
 
   it("traduce violaciones de formato", () => {
