@@ -4,6 +4,8 @@ import { z } from "zod";
 export type EstadoFormulario = {
   /** Error general (por ejemplo, de base de datos), ya traducido al español. */
   error?: string;
+  /** Mensaje de confirmación cuando la acción no redirige (p. ej. "Cambios guardados."). */
+  exito?: string;
   /** Primer error de cada campo. */
   errores?: Record<string, string>;
   /** Valores enviados, para no perderlos al volver a pintar el formulario tras un error. */

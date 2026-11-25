@@ -7,12 +7,19 @@ type Props = {
   valor: string;
   etiqueta: string;
   placeholder?: string;
+  /** Parámetros que se conservan al buscar y al limpiar (p. ej. un filtro de estado). */
+  ocultos?: Readonly<Record<string, string>>;
 };
 
 /** Formulario de búsqueda por GET; funciona sin JavaScript. */
-export function Buscador({ ruta, valor, etiqueta, placeholder }: Props) {
+export function Buscador({ ruta, valor, etiqueta, placeholder, ocultos = {} }: Props) {
+  const parametrosOcultos = new URLSearchParams(ocultos).toString();
+  const rutaLimpiar = parametrosOcultos ? `${ruta}?${parametrosOcultos}` : ruta;
   return (
     <form action={ruta} method="get" role="search" className="flex flex-col gap-2 sm:flex-row">
+      {Object.entries(ocultos).map(([nombre, valorOculto]) => (
+        <input key={nombre} type="hidden" name={nombre} value={valorOculto} />
+      ))}
       <label htmlFor="buscador-q" className="sr-only">
         {etiqueta}
       </label>
@@ -31,7 +38,7 @@ export function Buscador({ ruta, valor, etiqueta, placeholder }: Props) {
           Buscar
         </button>
         {valor !== "" && (
-          <Link href={ruta} className={`${claseBotonSecundario} flex-1 sm:flex-none`}>
+          <Link href={rutaLimpiar} className={`${claseBotonSecundario} flex-1 sm:flex-none`}>
             Limpiar
           </Link>
         )}

@@ -3,11 +3,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BotonEliminar } from "@/components/BotonEliminar";
 import { Dato } from "@/components/Dato";
-import { claseBotonSecundario, claseEnlace } from "@/components/estilos";
+import { claseBotonPrimario, claseBotonSecundario, claseEnlace } from "@/components/estilos";
+import { ListaResponsive } from "@/components/ListaResponsive";
 import { esIdValido } from "@/lib/formularios";
 import { formatearMatricula } from "@/lib/matricula";
 import { crearClienteServidor } from "@/lib/supabase/server";
+import {
+  COLUMNAS_ORDENES_VEHICULO,
+  SELECT_RESUMEN_ORDEN,
+  type FilaResumenOrden,
+} from "../../ordenes/columnasOrden";
 import { eliminarVehiculo } from "../actions";
+
+/** Órdenes del vehículo que se muestran en su ficha (las más recientes). */
+const LIMITE_ORDENES = 100;
 
 export const metadata: Metadata = { title: "Vehículo · Taller mecánico" };
 
@@ -18,13 +27,26 @@ export default async function PaginaVehiculo({ params }: { params: Promise<{ id:
   if (!esIdValido(id)) notFound();
 
   const supabase = await crearClienteServidor();
-  const { data: vehiculo, error } = await supabase
-    .from("vehiculos")
-    .select("id, matricula, marca, modelo, anio, kilometros, clientes(id, nombre)")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw new Error("No se pudo cargar el vehículo.");
+  const [resultadoVehiculo, resultadoOrdenes] = await Promise.all([
+    supabase
+      .from("vehiculos")
+      .select("id, matricula, marca, modelo, anio, kilometros, clientes(id, nombre)")
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("ordenes")
+      .select(SELECT_RESUMEN_ORDEN)
+      .eq("vehiculo_id", id)
+      .order("fecha_entrada", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(LIMITE_ORDENES),
+  ]);
+  if (resultadoVehiculo.error || resultadoOrdenes.error) {
+    throw new Error("No se pudo cargar el vehículo.");
+  }
+  const vehiculo = resultadoVehiculo.data;
   if (!vehiculo) notFound();
+  const ordenes: FilaResumenOrden[] = resultadoOrdenes.data;
 
   const matricula = formatearMatricula(vehiculo.matricula);
   const descripcion = [vehiculo.marca, vehiculo.modelo].filter(Boolean).join(" ");
@@ -63,13 +85,26 @@ export default async function PaginaVehiculo({ params }: { params: Promise<{ id:
         </Link>
       </div>
 
-      <section className="flex flex-col gap-2" aria-labelledby="titulo-ordenes">
-        <h2 id="titulo-ordenes" className="text-lg font-semibold">
-          Órdenes de este vehículo
-        </h2>
-        <p className="rounded-md border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
-          Próximamente.
-        </p>
+      <section className="flex flex-col gap-3" aria-labelledby="titulo-ordenes">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="titulo-ordenes" className="text-lg font-semibold">
+            Órdenes de este vehículo
+          </h2>
+          <Link href={`/ordenes/nueva?vehiculo=${vehiculo.id}`} className={claseBotonPrimario}>
+            Nueva orden
+          </Link>
+        </div>
+        <ListaResponsive
+          elementos={ordenes}
+          columnas={COLUMNAS_ORDENES_VEHICULO}
+          clave={(o) => o.id}
+          vacio="Este vehículo aún no tiene órdenes."
+        />
+        {ordenes.length === LIMITE_ORDENES && (
+          <p className="text-sm text-slate-600">
+            Se muestran las {LIMITE_ORDENES} órdenes más recientes.
+          </p>
+        )}
       </section>
 
       <section className="flex flex-col gap-2 border-t border-slate-200 pt-4">
